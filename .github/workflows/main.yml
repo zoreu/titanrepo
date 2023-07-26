@@ -1,9 +1,6 @@
 name: GERAR REPO
 
 on:
-  push:
-    branches:
-      - main
   schedule:
     - cron: "0 */3 * * *"
     
@@ -21,20 +18,25 @@ jobs:
         run: |
           pip install requests
           
+      - name: clonar arquivos da branch main
+        run: |
+          git clone https://github.com/zoreu/titanrepo.git main           
+          
       - name: listar arquivos
         run: |
           ls         
   
       - name: Rodar rotina
         run: |
+          cd main
           python rotina.py
           
       - name: Publicar no repositorio
         run: |
           git clone -b repo https://${{ secrets.GH_TOKEN }}@github.com/zoreu/titanrepo.git original
-          cp -r hibrido original
-          cp -r leia original
-          cp -r matrix original
+          cp -r main/hibrido original
+          cp -r main/leia original
+          cp -r main/matrix original
           cd original
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
