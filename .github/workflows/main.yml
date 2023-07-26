@@ -34,17 +34,21 @@ jobs:
           cd main
           python rotina.py
           
-      - name: Publicar no repositorio
+      - name: verificar
         run: |
-          git clone -b repo https://${{ secrets.GH_TOKEN }}@github.com/zoreu/titanrepo.git original
-          cp -r main/hibrido original
-          cp -r main/leia original
-          cp -r main/matrix original
-          cd original
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add .
-          git commit -m "update repo titan"
-          git push --force origin output          
+          ls      
+          
+#       - name: Publicar no repositorio
+#         run: |
+#           git clone -b repo https://${{ secrets.GH_TOKEN }}@github.com/zoreu/titanrepo.git original
+#           cp -r main/hibrido original
+#           cp -r main/leia original
+#           cp -r main/matrix original
+#           cd original
+#           git config user.name "GitHub Actions"
+#           git config user.email "actions@github.com"
+#           git add .
+#           git commit -m "update repo titan"
+#           git push --force origin output          
           
         
