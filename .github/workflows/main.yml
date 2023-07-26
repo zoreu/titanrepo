@@ -20,10 +20,13 @@ jobs:
       - name: Instalar requests
         run: |
           pip install requests
+          
+      - name: listar arquivos
+        run: |
+          ls         
   
       - name: Rodar rotina
         run: |
-          ls
           python rotina.py
           
       - name: Publicar no repositorio
