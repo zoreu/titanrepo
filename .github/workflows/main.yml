@@ -20,16 +20,10 @@ jobs:
       - name: Instalar requests
         run: |
           pip install requests
-          
-      - name: Verificar diretório de trabalho
-        run: |
-          pwd
-          cd ..
-          cd ..
-          ls -R
   
       - name: Rodar rotina
         run: |
+          ls
           python rotina.py
           
       - name: Publicar no repositorio
