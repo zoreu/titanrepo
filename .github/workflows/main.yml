@@ -24,6 +24,8 @@ jobs:
       - name: Verificar diretório de trabalho
         run: |
           pwd
+          cd ..
+          cd ..
           ls -R
   
       - name: Rodar rotina
