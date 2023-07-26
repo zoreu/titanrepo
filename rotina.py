@@ -14,6 +14,16 @@ temp_hibrido = os.path.join(dir_path, 'temp', "hibrido")
 temp_leia = os.path.join(dir_path, 'temp', "leia")
 temp_matrix = os.path.join(dir_path, 'temp', "matrix")
 
+def criar_pasta_se_nao_existir(caminho_da_pasta):
+    if not os.path.exists(caminho_da_pasta):
+        os.makedirs(caminho_da_pasta)
+        print(f'A pasta "{caminho_da_pasta}" foi criada com sucesso!')
+    else:
+        print(f'A pasta "{caminho_da_pasta}" já existe.')
+criar_pasta_se_nao_existir(temp_hibrido)
+criar_pasta_se_nao_existir(temp_leia)
+criar_pasta_se_nao_existir(temp_matrix)
+
 def compactar_pasta(pasta):
     # Verificar se a pasta é a "plugin.video.CineRoom"
     # nome_pasta = os.path.basename(pasta)
