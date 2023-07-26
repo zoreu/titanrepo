@@ -21,9 +21,10 @@ jobs:
         run: |
           pip install requests
           
-      - name: Listar conteúdo do diretório
+      - name: Verificar diretório de trabalho
         run: |
-          ls -R 
+          pwd
+          ls -R
   
       - name: Rodar rotina
         run: |
