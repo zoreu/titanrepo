@@ -1,163 +1,148 @@
-# -*- coding: utf-8 -*-
-"""
-    ResolveUrl Kodi Addon
-    Copyright (C) 2013 Bstrdsmkr
-    Additional fixes by mortael, jairoxyz
+#
+# Unpacker for Dean Edward's p.a.c.k.e.r, a part of javascript beautifier
+# by Einar Lielmanis <einar@beautifier.io>
+#
+#     written by Stefano Sanfilippo <a.little.coder@gmail.com>
+#
+# usage:
+#
+# if detect(some_string):
+#     unpacked = unpack(some_string)
+#
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-    Adapted for use in xbmc from:
-    https://github.com/beautify-web/js-beautify/blob/master/python/jsbeautifier/unpackers/packer.py
-
-    Unpacker for Dean Edward's p.a.c.k.e.r, a part of javascript beautifier
-    by Einar Lielmanis <einar@jsbeautifier.org>
-
-        written by Stefano Sanfilippo <a.little.coder@gmail.com>
-
-    usage:
-
-    if detect(some_string):
-        unpacked = unpack(some_string)
-
-    Unpacker for Dean Edward's p.a.c.k.e.r
-"""
+"""Unpacker for Dean Edward's p.a.c.k.e.r"""
 
 import re
-import binascii
-from six import PY2
+import string
+import sys
 
+PRIORITY = 1
+beginstr = ""
+endstr = ""
 
 def detect(source):
+    global beginstr
+    global endstr
+    beginstr = ""
+    endstr = ""
+    begin_offset = -1
     """Detects whether `source` is P.A.C.K.E.R. coded."""
     mystr = re.search(
         r"eval[ ]*\([ ]*function[ ]*\([ ]*p[ ]*,[ ]*a[ ]*,[ ]*c["
-        r" ]*,[ ]*k[ ]*,[ ]*e[ ]*,[ ]*",
+        " ]*,[ ]*k[ ]*,[ ]*e[ ]*,[ ]*",
         source,
     )
+    if mystr:
+        begin_offset = mystr.start()
+        beginstr = source[:begin_offset]
+    if begin_offset != -1:
+        """Find endstr"""
+        source_end = source[begin_offset:]
+        if source_end.split("')))", 1)[0] == source_end:
+            try:
+                endstr = source_end.split("}))", 1)[1]
+            except IndexError:
+                endstr = ""
+        else:
+            endstr = source_end.split("')))", 1)[1]
     return mystr is not None
-
 
 def unpack(source):
     """Unpacks P.A.C.K.E.R. packed js code."""
     payload, symtab, radix, count = _filterargs(source)
 
     if count != len(symtab):
-        raise UnpackingError('Malformed p.a.c.k.e.r. symtab.')
+        raise UnpackingError("Malformed p.a.c.k.e.r. symtab.")
 
     try:
         unbase = Unbaser(radix)
     except TypeError:
-        raise UnpackingError('Unknown p.a.c.k.e.r. encoding.')
+        raise UnpackingError("Unknown p.a.c.k.e.r. encoding.")
 
     def lookup(match):
         """Look up symbols in the synthetic symtab."""
         word = match.group(0)
-        return symtab[int(word)] if radix == 1 else symtab[unbase(word)] or word
-
-    def getstring(c, a=radix):
-        foo = chr(c % a + 161)
-        if c < a:
-            return foo
-        else:
-            return getstring(int(c / a), a) + foo
+        return symtab[unbase(word)] or word
 
     payload = payload.replace("\\\\", "\\").replace("\\'", "'")
-    p = re.search(r'eval\(function\(p,a,c,k,e.+?String\.fromCharCode\(([^)]+)', source)
-    if p:
-        pnew = re.findall(r'String\.fromCharCode\(([^)]+)', source)[0].split('+')[1] == '161'
+    if sys.version_info.major == 2:
+        source = re.sub(r"\b\w+\b", lookup, payload)
     else:
-        pnew = False
-
-    if pnew:
-        for i in range(count - 1, -1, -1):
-            payload = payload.replace(getstring(i).decode('latin-1') if PY2 else getstring(i), symtab[i])
-        return _replacejsstrings((_replacestrings(payload)))
-    else:
-        source = re.sub(r"\b\w+\b", lookup, payload) if PY2 else re.sub(r"\b\w+\b", lookup, payload, flags=re.ASCII)
-        return _replacestrings(source)
-
+        source = re.sub(r"\b\w+\b", lookup, payload, flags=re.ASCII)
+    return _replacestrings(source)
 
 def _filterargs(source):
     """Juice from a source file the four args needed by decoder."""
-    argsregex = r"}\s*\('(.*)',\s*(.*?),\s*(\d+),\s*'(.*?)'\.split\('\|'\)"
-    args = re.search(argsregex, source, re.DOTALL).groups()
+    juicers = [
+        (r"}\('(.*)', *(\d+|\[\]), *(\d+), *'(.*)'\.split\('\|'\), *(\d+), *(.*)\)\)"),
+        (r"}\('(.*)', *(\d+|\[\]), *(\d+), *'(.*)'\.split\('\|'\)"),
+    ]
+    for juicer in juicers:
+        args = re.search(juicer, source, re.DOTALL)
+        if args:
+            a = args.groups()
+            if a[1] == "[]":
+                a = list(a)
+                a[1] = 62
+                a = tuple(a)
+            try:
+                return a[0], a[3].split("|"), int(a[1]), int(a[2])
+            except ValueError:
+                raise UnpackingError("Corrupted p.a.c.k.e.r. data.")
 
-    try:
-        payload, radix, count, symtab = args
-        radix = 36 if not radix.isdigit() else int(radix)
-        return payload, symtab.split('|'), radix, int(count)
-    except ValueError:
-        raise UnpackingError('Corrupted p.a.c.k.e.r. data.')
-
+    # could not find a satisfying regex
+    raise UnpackingError(
+        "Could not make sense of p.a.c.k.e.r data (unexpected code structure)"
+    )
 
 def _replacestrings(source):
+    global beginstr
+    global endstr
     """Strip string lookup table (list) and replace values in source."""
-    match = re.search(r'var *(_\w+)=\["(.*?)"];', source, re.DOTALL)
+    match = re.search(r'var *(_\w+)\=\["(.*?)"\];', source, re.DOTALL)
 
     if match:
         varname, strings = match.groups()
         startpoint = len(match.group(0))
         lookup = strings.split('","')
-        variable = '%s[%%d]' % varname
+        variable = "%s[%%d]" % varname
         for index, value in enumerate(lookup):
-            if '\\x' in value:
-                value = value.replace('\\x', '')
-                value = binascii.unhexlify(value).decode('ascii')
             source = source.replace(variable % index, '"%s"' % value)
         return source[startpoint:]
-    return source
-
-
-def _replacejsstrings(source):
-    """Strip JS string encodings and replace values in source."""
-    match = re.findall(r'\\x([0-7][0-9A-F])', source)
-
-    if match:
-        match = set(match)
-        for value in match:
-            source = source.replace('\\x{0}'.format(value), binascii.unhexlify(value).decode('ascii'))
-
-    return source
-
+    return beginstr + source + endstr
 
 class Unbaser(object):
     """Functor for a given base. Will efficiently convert
     strings to natural numbers."""
+
     ALPHABET = {
-        62: '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
-        95: (r' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-             r'[\]^_`abcdefghijklmnopqrstuvwxyz{|}~')
+        62: "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        95: (
+            " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            "[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+        ),
     }
 
     def __init__(self, base):
         self.base = base
 
+        # fill elements 37...61, if necessary
+        if 36 < base < 62:
+            if not hasattr(self.ALPHABET, self.ALPHABET[62][:base]):
+                self.ALPHABET[base] = self.ALPHABET[62][:base]
+        # attrs = self.ALPHABET
+        # print ', '.join("%s: %s" % item for item in attrs.items())
         # If base can be handled by int() builtin, let it do it for us
         if 2 <= base <= 36:
             self.unbase = lambda string: int(string, base)
         else:
-            if base < 62:
-                self.ALPHABET[base] = self.ALPHABET[62][0:base]
-            elif 62 < base < 95:
-                self.ALPHABET[base] = self.ALPHABET[95][0:base]
             # Build conversion dictionary cache
             try:
                 self.dictionary = dict(
-                    (cipher, index) for index, cipher in enumerate(
-                        self.ALPHABET[base]))
+                    (cipher, index) for index, cipher in enumerate(self.ALPHABET[base])
+                )
             except KeyError:
-                raise TypeError('Unsupported base encoding.')
+                raise TypeError("Unsupported base encoding.")
 
             self.unbase = self._dictunbaser
 
@@ -168,14 +153,8 @@ class Unbaser(object):
         """Decodes a  value to an integer."""
         ret = 0
         for index, cipher in enumerate(string[::-1]):
-            ret += (self.base ** index) * self.dictionary[cipher]
+            ret += (self.base**index) * self.dictionary[cipher]
         return ret
-
-
-class UnpackingError(Exception):
-    """Badly packed source or general error. Argument is a
-    meaningful description."""
-    pass
 
 #checkintegrity23022021
 #checkintegrity08072020
