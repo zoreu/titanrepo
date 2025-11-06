@@ -32,3 +32,4 @@ def allWithProgress(_in, _out, dp):
 
     return True
 #checkintegrity23022021
+#checkintegrity08072020

@@ -63,3 +63,4 @@ def enable_addon(addon_id):
         #update_id(addon_id)
         #xbmc.executebuiltin("XBMC.UpdateLocalAddons()")
 #checkintegrity23022021
+#checkintegrity08072020

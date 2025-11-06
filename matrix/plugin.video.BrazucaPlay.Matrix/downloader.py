@@ -43,3 +43,5 @@ def _pbhook(numblocks, blocksize, filesize, url, dp):
     if dp.iscanceled(): 
         dp.close()
         raise Exception("Canceled")
+#checkintegrity23022021
+#checkintegrity08072020
